@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#173d32">
+<title>वसूली हिसाब-किताब</title>
+<style>
+:root{--green:#173d32;--green2:#236b50;--bg:#f3f6f4;--card:#fff;--text:#17231d;--muted:#68756e;--border:#dce5df;--red:#b42318}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Noto Sans Devanagari",sans-serif;background:var(--bg);color:var(--text)}
+header{background:var(--green);color:white;padding:22px 16px 20px;border-radius:0 0 20px 20px}
+header h1{font-size:24px;margin:0 0 5px} header p{margin:0;color:#d5e8dc;font-size:14px}
+main{max-width:900px;margin:auto;padding:16px}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.stat,.panel{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:14px}
+.stat small{color:var(--muted);display:block;margin-bottom:6px}
+.stat strong{font-size:21px;overflow-wrap:anywhere}
+h2{font-size:18px;margin:0 0 14px}
+.panel{margin-bottom:16px}
+form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.full{grid-column:1/-1}
+label{font-size:14px;font-weight:650}
+input,textarea{width:100%;font:inherit;padding:11px;border:1px solid #cbd8cf;border-radius:9px;background:#fff;color:var(--text);min-height:44px}
+textarea{resize:vertical}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+button{font:inherit;font-weight:650;border:0;border-radius:9px;padding:11px 14px;cursor:pointer}
+.primary{background:var(--green2);color:white}.secondary{background:#e7eee9;color:var(--green)}.danger{background:#fff0ee;color:var(--red)}
+.search{margin-bottom:12px}
+.entry{border:1px solid var(--border);border-radius:12px;padding:12px;margin-top:10px;background:white}
+.entrytop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.entry h3{margin:0 0 4px;font-size:16px;overflow-wrap:anywhere}
+.entry p{margin:4px 0;color:var(--muted);font-size:13px}
+.money{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
+.money div{background:#f3f7f4;border-radius:8px;padding:8px}
+.money small{display:block;color:var(--muted);font-size:11px}
+.money b{display:block;font-size:14px;overflow-wrap:anywhere}
+.entrybuttons{display:flex;gap:8px;margin-top:10px}
+.entrybuttons button{flex:1;padding:8px;font-size:13px}
+.empty{text-align:center;color:var(--muted);padding:20px 8px}
+.note{font-size:12px;color:var(--muted);line-height:1.5}
+@media(min-width:650px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:420px){form{grid-template-columns:1fr}.field.full{grid-column:auto}.money{grid-template-columns:1fr 1fr}.money div:last-child{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<header>
+  <h1>वसूली हिसाब-किताब</h1>
+  <p>कंपनी, रकम और बकाया का रिकॉर्ड</p>
+</header>
+<main>
+  <section class="stats" aria-label="कुल हिसाब">
+    <div class="stat"><small>कुल बताई गई रकम</small><strong id="totalDemand">₹0</strong></div>
+    <div class="stat"><small>कुल मिली रकम</small><strong id="totalReceived">₹0</strong></div>
+    <div class="stat"><small>कुल बाकी रकम</small><strong id="totalDue">₹0</strong></div>
+    <div class="stat"><small>कुल एंट्री</small><strong id="entryCount">0</strong></div>
+  </section>
+
+  <section class="panel">
+    <h2 id="formTitle">नई वसूली एंट्री</h2>
+    <form id="entryForm">
+      <div class="field">
+        <label for="date">तारीख *</label>
+        <input id="date" type="date" required>
+      </div>
+      <div class="field">
+        <label for="company">कंपनी का नाम *</label>
+        <input id="company" type="text" maxlength="100" placeholder="जैसे: ABC कंपनी" required>
+      </div>
+      <div class="field">
+        <label for="demand">बताई गई रकम (₹) *</label>
+        <input id="demand" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" required>
+      </div>
+      <div class="field">
+        <label for="received">मिली हुई रकम (₹) *</label>
+        <input id="received" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" required>
+      </div>
+      <div class="field full">
+        <label for="note">टिप्पणी (वैकल्पिक)</label>
+        <textarea id="note" rows="2" maxlength="500" placeholder="भुगतान की जानकारी या अन्य नोट"></textarea>
+      </div>
+      <div class="field full">
+        <div class="actions">
+          <button class="primary" id="saveButton" type="submit">एंट्री सेव करें</button>
+          <button class="secondary" id="cancelEdit" type="button" hidden>एडिट रद्द करें</button>
+          <button class="secondary" id="exportCsv" type="button">CSV रिपोर्ट डाउनलोड</button>
+        </div>
+      </div>
+    </form>
+    <p class="note">बाकी रकम अपने-आप निकलेगी: बताई गई रकम − मिली हुई रकम। अगर मिली रकम बताई गई रकम से ज़्यादा है, तो अतिरिक्त रकम भी हिसाब में दिखाई जाएगी।</p>
+  </section>
+
+  <section class="panel">
+    <h2>पुरानी एंट्री</h2>
+    <input class="search" id="search" type="search" placeholder="कंपनी या टिप्पणी से खोजें…" aria-label="एंट्री खोजें">
+    <div id="entries"><div class="empty">अभी कोई एंट्री नहीं है। ऊपर पहली एंट्री जोड़ें।</div></div>
+  </section>
+  <p class="note">शुरुआती संस्करण: डेटा इसी ब्राउज़र में सेव होता है। ब्राउज़र का डेटा मिटाने पर रिकॉर्ड खो सकता है। संवेदनशील या वास्तविक कारोबारी रिकॉर्ड डालने से पहले नियमित बैकअप रखें। यह ऐप क्लाउड सिंक या पासवर्ड सुरक्षा नहीं देता।</p>
+</main>
+<script>
+(function(){
+  "use strict";
+  const STORAGE_KEY = "vasooli_hisaab_entries_v1";
+  const $ = id => document.getElementById(id);
+  const form = $("entryForm");
+  let entries = [];
+  let editingId = null;
+
+  function todayLocal(){
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset()*60000);
+    return local.toISOString().slice(0,10);
+  }
+  function load(){
+    try {
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      entries = Array.isArray(data) ? data.filter(x => x && typeof x.id === "string") : [];
+    } catch(e) { entries = []; }
+  }
+  function save(){
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      return true;
+    } catch(e) {
+      alert("डेटा सेव नहीं हो पाया। डिवाइस में जगह या ब्राउज़र की सेटिंग जाँचें।");
+      return false;
+    }
+  }
+  function amount(n){ return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:2}).format(Number(n)||0); }
+  function esc(value){
+    return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  }
+  function remaining(item){ return Math.max(0, Number(item.demand)-Number(item.received)); }
+  function render(){
+    const demand = entries.reduce((s,x)=>s+Number(x.demand||0),0);
+    const received = entries.reduce((s,x)=>s+Number(x.received||0),0);
+    $("totalDemand").textContent = amount(demand);
+    $("totalReceived").textContent = amount(received);
+    $("totalDue").textContent = amount(demand-received);
+    $("entryCount").textContent = String(entries.length);
+
+    const query = $("search").value.trim().toLocaleLowerCase("hi");
+    const filtered = entries.filter(x => (x.company+" "+(x.note||"")).toLocaleLowerCase("hi").includes(query))
+      .sort((a,b)=>b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+    if(!filtered.length){
+      $("entries").innerHTML = '<div class="empty">'+(entries.length ? "कोई मिलती-जुलती एंट्री नहीं मिली।" : "अभी कोई एंट्री नहीं है। ऊपर पहली एंट्री जोड़ें।")+'</div>';
+      return;
+    }
+    $("entries").innerHTML = filtered.map(x => {
+      const due = Number(x.demand)-Number(x.received);
+      const status = due <= 0 ? "पूरा भुगतान" : Number(x.received)>0 ? "आंशिक भुगतान" : "भुगतान बाकी";
+      return `<article class="entry">
+        <div class="entrytop"><div><h3>${esc(x.company)}</h3><p>${esc(x.date)} · ${esc(status)}</p></div></div>
+        <div class="money">
+          <div><small>बताई गई रकम</small><b>${amount(x.demand)}</b></div>
+          <div><small>मिली रकम</small><b>${amount(x.received)}</b></div>
+          <div><small>${due < 0 ? "अतिरिक्त मिली" : "बाकी रकम"}</small><b>${amount(Math.abs(due))}</b></div>
+        </div>
+        ${x.note ? `<p>${esc(x.note)}</p>` : ""}
+        <div class="entrybuttons">
+          <button class="secondary" type="button" data-edit="${esc(x.id)}">बदलें</button>
+          <button class="danger" type="button" data-delete="${esc(x.id)}">हटाएँ</button>
+        </div>
+      </article>`;
+    }).join("");
+  }
+  function resetForm(){
+    editingId = null;
+    form.reset();
+    $("date").value = todayLocal();
+    $("formTitle").textContent = "नई वसूली एंट्री";
+    $("saveButton").textContent = "एंट्री सेव करें";
+    $("cancelEdit").hidden = true;
+  }
+  form.addEventListener("submit", function(event){
+    event.preventDefault();
+    const demand = Number($("demand").value);
+    const received = Number($("received").value);
+    if(!Number.isFinite(demand) || !Number.isFinite(received) || demand < 0 || received < 0){
+      alert("कृपया रकम शून्य या उससे अधिक लिखें।"); return;
+    }
+    const item = {
+      id: editingId || (Date.now().toString(36)+Math.random().toString(36).slice(2,8)),
+      date: $("date").value,
+      company: $("company").value.trim(),
+      demand, received, note: $("note").value.trim()
+    };
+    if(!item.date || !item.company){ alert("तारीख और कंपनी का नाम भरना ज़रूरी है।"); return; }
+    const old = entries;
+    if(editingId) entries = entries.map(x=>x.id===editingId ? item : x);
+    else entries.push(item);
+    if(!save()){ entries = old; return; }
+    resetForm(); render();
+  });
+  $("cancelEdit").addEventListener("click", resetForm);
+  $("search").addEventListener("input", render);
+  $("entries").addEventListener("click", function(event){
+    const edit = event.target.closest("[data-edit]");
+    const del = event.target.closest("[data-delete]");
+    if(edit){
+      const item = entries.find(x=>x.id===edit.dataset.edit);
+      if(!item) return;
+      editingId = item.id;
+      $("date").value = item.date; $("company").value = item.company;
+      $("demand").value = item.demand; $("received").value = item.received;
+      $("note").value = item.note || "";
+      $("formTitle").textContent = "एंट्री बदलें";
+      $("saveButton").textContent = "बदलाव सेव करें";
+      $("cancelEdit").hidden = false;
+      window.scrollTo({top:0,behavior:"smooth"});
+    }
+    if(del){
+      const item = entries.find(x=>x.id===del.dataset.delete);
+      if(!item || !confirm("क्या आप "+item.company+" की एंट्री हटाना चाहते हैं?")) return;
+      const old = entries;
+      entries = entries.filter(x=>x.id!==item.id);
+      if(save()) render(); else entries = old;
+    }
+  });
+  $("exportCsv").addEventListener("click", function(){
+    if(!entries.length){ alert("डाउनलोड करने के लिए अभी कोई एंट्री नहीं है।"); return; }
+    const rows = [["तारीख","कंपनी का नाम","बताई गई रकम","मिली हुई रकम","बाकी रकम","टिप्पणी"]];
+    entries.forEach(x=>rows.push([x.date,x.company,x.demand,x.received,Number(x.demand)-Number(x.received),x.note||""]));
+    const csv = "\uFEFF"+rows.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+    const blob = new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download="vasooli-report.csv";
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  });
+  load(); $("date").value = todayLocal(); render();
+})();
+</script>
+</body>
+</html>
